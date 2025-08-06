@@ -34,15 +34,16 @@ def read_root():
                 backdrop-filter: blur(10px);
                 box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             }
-            .logo { 
-                font-size: 4em; 
+            .logo-text { 
+                font-size: 3.5em; 
+                font-weight: 800;
                 margin-bottom: 20px;
+                background: linear-gradient(45deg, #3182ce, #10b981, #f59e0b);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                letter-spacing: -2px;
                 text-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            }
-            .title {
-                font-size: 2.5em;
-                margin-bottom: 10px;
-                font-weight: 700;
             }
             .subtitle {
                 font-size: 1.2em;
@@ -83,16 +84,14 @@ def read_root():
             }
             @media (max-width: 600px) {
                 .features { grid-template-columns: 1fr; }
-                .title { font-size: 2em; }
-                .logo { font-size: 3em; }
+                .logo-text { font-size: 2.8em; }
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="logo">💬</div>
-            <h1 class="title">Zonenium</h1>
-            <p class="subtitle">Free WhatsApp Alternative</p>
+            <div class="logo-text">Zonenium</div>
+            <p class="subtitle">🚀 Free WhatsApp Alternative</p>
             
             <div class="features">
                 <div class="feature">
