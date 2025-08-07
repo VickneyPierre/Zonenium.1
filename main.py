@@ -1,489 +1,392 @@
-**COPY EXACTLY:**
+from fastapi import FastAPI, HTTPException from fastapi.middleware.cors import CORSMiddleware from fastapi.responses import HTMLResponse, JSONResponse import os
 
-requirements.txt:
-```
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
-```
+PORT = int(os.environ.get("PORT", 8000)) DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
-main.py:
-Action: file_editor view /app/zonenium/deployment_main.py
-Observation: /app/zonenium/deployment_main.py:
-1|from fastapi import FastAPI, HTTPException
-2|from fastapi.middleware.cors import CORSMiddleware
-3|from fastapi.responses import HTMLResponse, JSONResponse
-4|import os
-5|
-6|PORT = int(os.environ.get("PORT", 8000))
-7|DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
-8|
-9|app = FastAPI(
-10|    title="Zoneium Messenger - Premium Messaging Experience", 
-11|    description="Reliable. Private. Beautiful. The most elegant messaging app for modern communication.",
-12|    version="3.0.0"
-13|)
-14|
-15|app.add_middleware(
-16|    CORSMiddleware,
-17|    allow_origins=["*"],
-18|    allow_credentials=True,
-19|    allow_methods=["*"],
-20|    allow_headers=["*"]
-21|)
-22|
-23|@app.get("/")
-24|def home():
-25|    html_content = """
-26|    <!DOCTYPE html>
-27|    <html lang="en">
-28|    <head>
-29|        <meta charset="UTF-8">
-30|        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-31|        <title>Zoneium - Premium Messaging Experience</title>
-32|        <meta name="theme-color" content="#FF6B35">
-33|        <link rel="preconnect" href="https://fonts.googleapis.com">
-34|        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-35|        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-36|        <style>
-37|            :root {
-38|                --primary-orange: #FF6B35;
-39|                --primary-orange-hover: #E55D2B;
-40|                --primary-orange-light: #FF8F66;
-41|                --secondary-orange: #FFF4F0;
-42|                --gradient-primary: linear-gradient(135deg, #FF6B35 0%, #FF8F66 100%);
-43|                --gradient-secondary: linear-gradient(135deg, #FFF4F0 0%, #FFEDE5 100%);
-44|                --white: #FFFFFF;
-45|                --gray-50: #FAFBFC;
-46|                --gray-100: #F3F4F6;
-47|                --gray-200: #E5E7EB;
-48|                --gray-300: #D1D5DB;
-49|                --gray-400: #9CA3AF;
-50|                --gray-500: #6B7280;
-51|                --gray-600: #4B5563;
-52|                --gray-700: #374151;
-53|                --gray-800: #1F2937;
-54|                --gray-900: #111827;
-55|                --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-56|                --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-57|                --shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-58|            }
-59|
-60|            * { margin: 0; padding: 0; box-sizing: border-box; }
-61|
-62|            body {
-63|                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-64|                background: var(--gradient-primary);
-65|                min-height: 100vh;
-66|                display: flex;
-67|                align-items: center;
-68|                justify-content: center;
-69|                line-height: 1.6;
-70|                color: var(--gray-800);
-71|                overflow: hidden;
-72|                position: relative;
-73|            }
-74|
-75|            .bg-decoration {
-76|                position: absolute;
-77|                width: 200px;
-78|                height: 200px;
-79|                border-radius: 50%;
-80|                background: rgba(255, 255, 255, 0.1);
-81|                animation: float 6s ease-in-out infinite;
-82|            }
-83|            .bg-decoration:nth-child(1) {
-84|                top: 10%;
-85|                left: 10%;
-86|                animation-delay: 0s;
-87|            }
-88|            .bg-decoration:nth-child(2) {
-89|                top: 70%;
-90|                right: 10%;
-91|                animation-delay: 2s;
-92|                width: 150px;
-93|                height: 150px;
-94|            }
-95|            .bg-decoration:nth-child(3) {
-96|                bottom: 20%;
-97|                left: 20%;
-98|                animation-delay: 4s;
-99|                width: 100px;
-100|                height: 100px;
-101|            }
-102|
-103|            @keyframes float {
-104|                0%, 100% { transform: translateY(0px) rotate(0deg); }
-105|                50% { transform: translateY(-20px) rotate(180deg); }
-106|            }
-107|
-108|            .container {
-109|                max-width: 420px;
-110|                width: 90%;
-111|                position: relative;
-112|                z-index: 10;
-113|            }
-114|
-115|            .login-card {
-116|                background: rgba(255, 255, 255, 0.95);
-117|                border-radius: 24px;
-118|                padding: 40px 32px;
-119|                box-shadow: var(--shadow-large);
-120|                backdrop-filter: blur(20px);
-121|                border: 1px solid rgba(255, 255, 255, 0.2);
-122|                animation: slideUp 0.8s ease-out;
-123|            }
-124|
-125|            @keyframes slideUp {
-126|                from {
-127|                    opacity: 0;
-128|                    transform: translateY(30px);
-129|                }
-130|                to {
-131|                    opacity: 1;
-132|                    transform: translateY(0);
-133|                }
-134|            }
-135|
-136|            .logo-container {
-137|                text-align: center;
-138|                margin-bottom: 32px;
-139|            }
-140|
-141|            .logo {
-142|                width: 80px;
-143|                height: 80px;
-144|                margin: 0 auto 16px;
-145|                background: var(--gradient-primary);
-146|                border-radius: 20px;
-147|                display: flex;
-148|                align-items: center;
-149|                justify-content: center;
-150|                box-shadow: var(--shadow-medium);
-151|                transition: transform 0.3s ease;
-152|                font-size: 32px;
-153|                font-weight: 900;
-154|                color: white;
-155|            }
-156|
-157|            .logo:hover {
-158|                transform: scale(1.05);
-159|            }
-160|
-161|            .app-title {
-162|                font-size: 28px;
-163|                font-weight: 800;
-164|                color: var(--gray-800);
-165|                margin-bottom: 8px;
-166|                letter-spacing: -0.02em;
-167|            }
-168|
-169|            .app-subtitle {
-170|                color: var(--gray-500);
-171|                font-size: 16px;
-172|                font-weight: 500;
-173|                margin-bottom: 32px;
-174|            }
-175|
-176|            .form-group {
-177|                margin-bottom: 24px;
-178|            }
-179|
-180|            .form-label {
-181|                display: block;
-182|                font-size: 14px;
-183|                font-weight: 600;
-184|                color: var(--gray-700);
-185|                margin-bottom: 8px;
-186|            }
-187|
-188|            .form-input {
-189|                width: 100%;
-190|                padding: 16px 18px;
-191|                border: 2px solid var(--gray-200);
-192|                border-radius: 12px;
-193|                font-size: 16px;
-194|                font-weight: 500;
-195|                color: var(--gray-800);
-196|                background: var(--white);
-197|                transition: all 0.3s ease;
-198|                outline: none;
-199|            }
-200|
-201|            .form-input:focus {
-202|                border-color: var(--primary-orange);
-203|                box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1);
-204|                transform: translateY(-1px);
-205|            }
-206|
-207|            .form-input::placeholder {
-208|                color: var(--gray-400);
-209|                font-weight: 400;
-210|            }
-211|
-212|            .primary-button {
-213|                width: 100%;
-214|                padding: 18px 24px;
-215|                background: var(--gradient-primary);
-216|                color: var(--white);
-217|                border: none;
-218|                border-radius: 12px;
-219|                font-size: 16px;
-220|                font-weight: 700;
-221|                cursor: pointer;
-222|                transition: all 0.3s ease;
-223|                box-shadow: var(--shadow-medium);
-224|                margin-bottom: 20px;
-225|                text-decoration: none;
-226|                display: inline-block;
-227|                text-align: center;
-228|            }
-229|
-230|            .primary-button:hover {
-231|                background: linear-gradient(135deg, var(--primary-orange-hover) 0%, var(--primary-orange) 100%);
-232|                transform: translateY(-2px);
-233|                box-shadow: var(--shadow-large);
-234|            }
-235|
-236|            .secondary-button {
-237|                width: 100%;
-238|                padding: 16px 24px;
-239|                background: transparent;
-240|                color: var(--gray-600);
-241|                border: 2px solid var(--gray-200);
-242|                border-radius: 12px;
-243|                font-size: 16px;
-244|                font-weight: 600;
-245|                cursor: pointer;
-246|                transition: all 0.3s ease;
-247|                margin-bottom: 20px;
-248|                text-decoration: none;
-249|                display: inline-block;
-250|                text-align: center;
-251|            }
-252|
-253|            .secondary-button:hover {
-254|                border-color: var(--primary-orange);
-255|                color: var(--primary-orange);
-256|                background: rgba(255, 107, 53, 0.05);
-257|                transform: translateY(-1px);
-258|            }
-259|
-260|            .launch-button {
-261|                background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-262|                margin-bottom: 16px;
-263|            }
-264|            
-265|            .launch-button:hover {
-266|                background: linear-gradient(135deg, #059669 0%, #047857 100%);
-267|            }
-268|
-269|            .divider {
-270|                text-align: center;
-271|                margin: 24px 0;
-272|                position: relative;
-273|                color: var(--gray-400);
-274|                font-size: 14px;
-275|                font-weight: 500;
-276|            }
-277|
-278|            .divider::before {
-279|                content: '';
-280|                position: absolute;
-281|                top: 50%;
-282|                left: 0;
-283|                right: 0;
-284|                height: 1px;
-285|                background: var(--gray-200);
-286|                z-index: 1;
-287|            }
-288|
-289|            .divider span {
-290|                background: var(--white);
-291|                padding: 0 16px;
-292|                position: relative;
-293|                z-index: 2;
-294|            }
-295|
-296|            .features {
-297|                margin-top: 32px;
-298|                text-align: center;
-299|            }
-300|
-301|            .features-title {
-302|                font-size: 18px;
-303|                font-weight: 700;
-304|                color: var(--gray-800);
-305|                margin-bottom: 16px;
-306|            }
-307|
-308|            .features-list {
-309|                display: grid;
-310|                grid-template-columns: repeat(2, 1fr);
-311|                gap: 12px;
-312|                font-size: 14px;
-313|                color: var(--gray-600);
-314|            }
-315|
-316|            .feature-item {
-317|                display: flex;
-318|                align-items: center;
-319|                gap: 8px;
-320|                padding: 8px 12px;
-321|                background: var(--secondary-orange);
-322|                border-radius: 8px;
-323|                font-weight: 500;
-324|            }
-325|
-326|            .feature-icon {
-327|                width: 16px;
-328|                height: 16px;
-329|                background: var(--primary-orange);
-330|                border-radius: 50%;
-331|                display: flex;
-332|                align-items: center;
-333|                justify-content: center;
-334|                color: white;
-335|                font-size: 10px;
-336|                font-weight: bold;
-337|            }
-338|
-339|            @media (max-width: 480px) {
-340|                .container { width: 95%; }
-341|                .login-card { padding: 32px 24px; }
-342|                .app-title { font-size: 24px; }
-343|                .form-input, .primary-button { font-size: 16px; }
-344|                .features-list { grid-template-columns: 1fr; }
-345|            }
-346|        </style>
-347|    </head>
-348|    <body>
-349|        <div class="bg-decoration"></div>
-350|        <div class="bg-decoration"></div>
-351|        <div class="bg-decoration"></div>
-352|        
-353|        <div class="container">
-354|            <div class="login-card">
-355|                <div class="logo-container">
-356|                    <div class="logo">Z</div>
-357|                    <h1 class="app-title">Zonenium</h1>
-358|                    <p class="app-subtitle">Reliable • Private • Beautiful</p>
-359|                </div>
-360|
-361|                <form id="loginForm">
-362|                    <div class="form-group">
-363|                        <label class="form-label" for="phone">Phone Number</label>
-364|                        <input 
-365|                            type="tel" 
-366|                            id="phone" 
-367|                            name="phone" 
-368|                            class="form-input" 
-369|                            placeholder="+1 (555) 123-4567"
-370|                            required
-371|                        />
-372|                    </div>
-373|
-374|                    <div class="form-group">
-375|                        <label class="form-label" for="password">Password</label>
-376|                        <input 
-377|                            type="password" 
-378|                            id="password" 
-379|                            name="password" 
-380|                            class="form-input" 
-381|                            placeholder="Enter your password"
-382|                            required
-383|                        />
-384|                    </div>
-385|
-386|                    <a href="/app" class="primary-button launch-button">
-387|                        🚀 Launch App
-388|                    </a>
-389|
-390|                    <button type="submit" class="primary-button">
-391|                        Sign In to Zonenium
-392|                    </button>
-393|                </form>
-394|
-395|                <div class="divider">
-396|                    <span>or</span>
-397|                </div>
-398|
-399|                <a href="/register" class="secondary-button">
-400|                    Create New Account
-401|                </a>
-402|
-403|                <div class="features">
-404|                    <h3 class="features-title">Why Choose Zonenium?</h3>
-405|                    <div class="features-list">
-406|                        <div class="feature-item">
-407|                            <div class="feature-icon">🔒</div>
-408|                            <span>End-to-End Encrypted</span>
-409|                        </div>
-410|                        <div class="feature-item">
-411|                            <div class="feature-icon">⚡</div>
-412|                            <span>Lightning Fast</span>
-413|                        </div>
-414|                        <div class="feature-item">
-415|                            <div class="feature-icon">🎵</div>
-416|                            <span>Voice Messages</span>
-417|                        </div>
-418|                        <div class="feature-item">
-419|                            <div class="feature-icon">👥</div>
-420|                            <span>Group Chats</span>
-421|                        </div>
-422|                    </div>
-423|                </div>
-424|            </div>
-425|        </div>
-426|
-427|        <script>
-428|            document.getElementById('loginForm').addEventListener('submit', function(e) {
-429|                e.preventDefault();
-430|                window.location.href = '/app';
-431|            });
-432|        </script>
-433|    </body>
-434|    </html>
-435|    """
-436|    return HTMLResponse(content=html_content)
-437|
-438|@app.get("/app")
-439|def messenger_app():
-440|    return HTMLResponse(content="""
-441|    <!DOCTYPE html>
-442|    <html><head><title>Zonenium - Messaging App</title></head>
-443|    <body style="font-family: Arial; text-align: center; padding: 50px; background: #1F2937; color: white;">
-444|        <div style="max-width: 400px; margin: 0 auto;">
-445|            <div style="width: 60px; height: 60px; margin: 0 auto 20px; background: linear-gradient(135deg, #FF6B35, #FF8F66); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white;">Z</div>
-446|            <h1>Welcome to Zonenium</h1>
-447|            <p>Premium messaging experience coming soon!</p>
-448|            <div style="margin: 30px 0;">
-449|                <h3>Demo Accounts:</h3>
-450|                <p>Username: demo_user, Password: demo123</p>
-451|                <p>Username: test_user, Password: test123</p>
-452|            </div>
-453|            <p><a href="/" style="color: #FF6B35;">← Back to Home</a></p>
-454|        </div>
-455|    </body></html>
-456|    """)
-457|
-458|@app.get("/api/status")
-459|def get_status():
-460|    return {
-461|        "status": "live",
-462|        "app": "Zoneium Messenger Premium",
-463|        "version": "3.0.0",
-464|        "message": "Premium messaging experience with your branding - Reliable. Private. Beautiful.",
-465|        "features": [
-466|            "Beautiful landing page with your Zonenium branding",
-467|            "Launch App button for seamless navigation", 
-468|            "Premium UI with glass-morphism effects",
-469|            "Mobile responsive design",
-470|            "Ready for full messaging features"
-471|        ]
-472|    }
-473|
-474|if __name__ == "__main__":
-475|    import uvicorn
-476|    uvicorn.run(app, host="0.0.0.0", port=PORT)
+app = FastAPI( title="Zoneium Messenger - Premium Messaging Experience", description="Reliable. Private. Beautiful. The most elegant messaging app for modern communication.", version="3.0.0" )
 
+app.add_middleware( CORSMiddleware, allow_origins=[""], allow_credentials=True, allow_methods=[""], allow_headers=["*"] )
+
+@app.get("/") def home(): html_content = """ <!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Zoneium - Premium Messaging Experience</title> <meta name="theme-color" content="#FF6B35"> <link rel="preconnect" href="https://fonts.googleapis.com"> <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"> <style> :root { --primary-orange: #FF6B35; --primary-orange-hover: #E55D2B; --primary-orange-light: #FF8F66; --secondary-orange: #FFF4F0; --gradient-primary: linear-gradient(135deg, #FF6B35 0%, #FF8F66 100%); --gradient-secondary: linear-gradient(135deg, #FFF4F0 0%, #FFEDE5 100%); --white: #FFFFFF; --gray-50: #FAFBFC; --gray-100: #F3F4F6; --gray-200: #E5E7EB; --gray-300: #D1D5DB; --gray-400: #9CA3AF; --gray-500: #6B7280; --gray-600: #4B5563; --gray-700: #374151; --gray-800: #1F2937; --gray-900: #111827; --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); --shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gradient-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.6;
+            color: var(--gray-800);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bg-decoration {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 6s ease-in-out infinite;
+        }
+        .bg-decoration:nth-child(1) {
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+        .bg-decoration:nth-child(2) {
+            top: 70%;
+            right: 10%;
+            animation-delay: 2s;
+            width: 150px;
+            height: 150px;
+        }
+        .bg-decoration:nth-child(3) {
+            bottom: 20%;
+            left: 20%;
+            animation-delay: 4s;
+            width: 100px;
+            height: 100px;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .container {
+            max-width: 420px;
+            width: 90%;
+            position: relative;
+            z-index: 10;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 40px 32px;
+            box-shadow: var(--shadow-large);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 16px;
+            background: var(--gradient-primary);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-medium);
+            transition: transform 0.3s ease;
+            font-size: 32px;
+            font-weight: 900;
+            color: white;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .app-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--gray-800);
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .app-subtitle {
+            color: var(--gray-500);
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px 18px;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-800);
+            background: var(--white);
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-orange);
+            box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .form-input::placeholder {
+            color: var(--gray-400);
+            font-weight: 400;
+        }
+
+        .primary-button {
+            width: 100%;
+            padding: 18px 24px;
+            background: var(--gradient-primary);
+            color: var(--white);
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-medium);
+            margin-bottom: 20px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .primary-button:hover {
+            background: linear-gradient(135deg, var(--primary-orange-hover) 0%, var(--primary-orange) 100%);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-large);
+        }
+
+        .secondary-button {
+            width: 100%;
+            padding: 16px 24px;
+            background: transparent;
+            color: var(--gray-600);
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .secondary-button:hover {
+            border-color: var(--primary-orange);
+            color: var(--primary-orange);
+            background: rgba(255, 107, 53, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .launch-button {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            margin-bottom: 16px;
+        }
+        
+        .launch-button:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        .divider {
+            text-align: center;
+            margin: 24px 0;
+            position: relative;
+            color: var(--gray-400);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--gray-200);
+            z-index: 1;
+        }
+
+        .divider span {
+            background: var(--white);
+            padding: 0 16px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .features {
+            margin-top: 32px;
+            text-align: center;
+        }
+
+        .features-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 16px;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            font-size: 14px;
+            color: var(--gray-600);
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--secondary-orange);
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .feature-icon {
+            width: 16px;
+            height: 16px;
+            background: var(--primary-orange);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 480px) {
+            .container { width: 95%; }
+            .login-card { padding: 32px 24px; }
+            .app-title { font-size: 24px; }
+            .form-input, .primary-button { font-size: 16px; }
+            .features-list { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+    
+    <div class="container">
+        <div class="login-card">
+            <div class="logo-container">
+                <div class="logo">Z</div>
+                <h1 class="app-title">Zonenium</h1>
+                <p class="app-subtitle">Reliable • Private • Beautiful</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="phone">Phone Number</label>
+                    <input 
+                        type="tel" 
+                        id="phone" 
+                        name="phone" 
+                        class="form-input" 
+                        placeholder="+1 (555) 123-4567"
+                        required
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-input" 
+                        placeholder="Enter your password"
+                        required
+                    />
+                </div>
+
+                <a href="/app" class="primary-button launch-button">
+                    🚀 Launch App
+                </a>
+
+                <button type="submit" class="primary-button">
+                    Sign In to Zonenium
+                </button>
+            </form>
+
+            <div class="divider">
+                <span>or</span>
+            </div>
+
+            <a href="/register" class="secondary-button">
+                Create New Account
+            </a>
+
+            <div class="features">
+                <h3 class="features-title">Why Choose Zonenium?</h3>
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">🔒</div>
+                        <span>End-to-End Encrypted</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">⚡</div>
+                        <span>Lightning Fast</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🎵</div>
+                        <span>Voice Messages</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">👥</div>
+                        <span>Group Chats</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            window.location.href = '/app';
+        });
+    </script>
+</body>
+</html>
+"""
+return HTMLResponse(content=html_content)
+@app.get("/app") def messenger_app(): return HTMLResponse(content=""" <!DOCTYPE html> <html><head><title>Zonenium - Messaging App</title></head> <body style="font-family: Arial; text-align: center; padding: 50px; background: #1F2937; color: white;"> <div style="max-width: 400px; margin: 0 auto;"> <div style="width: 60px; height: 60px; margin: 0 auto 20px; background: linear-gradient(135deg, #FF6B35, #FF8F66); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white;">Z</div> <h1>Welcome to Zonenium</h1> <p>Premium messaging experience coming soon!</p> <div style="margin: 30px 0;"> <h3>Demo Accounts:</h3> <p>Username: demo_user, Password: demo123</p> <p>Username: test_user, Password: test123</p> </div> <p><a href="/" style="color: #FF6B35;">← Back to Home</a></p> </div> </body></html> """)
+
+@app.get("/api/status") def get_status(): return { "status": "live", "app": "Zoneium Messenger Premium", "version": "3.0.0", "message": "Premium messaging experience with your branding - Reliable. Private. Beautiful.", "features": [ "Beautiful landing page with your Zonenium branding", "Launch App button for seamless navigation", "Premium UI with glass-morphism effects", "Mobile responsive design", "Ready for full messaging features" ] }
+
+if name == "main": import uvicorn uvicorn.run(app, host="0.0.0.0", port=PORT)
