@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 # Environment Configuration
 PORT = int(os.environ.get("PORT", 8000))
-SECRET_KEY = "zonetium-production-key-2024"
+SECRET_KEY = "zonenium-production-key-2024"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -35,7 +35,7 @@ class UserLogin(BaseModel):
     password: str
 
 # FastAPI app
-app = FastAPI(title="Zonetium Messenger - Production", version="3.0.0")
+app = FastAPI(title="Zonenium Messenger - Production", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,7 +66,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Zonetium - Premium Messaging</title>
+        <title>Zonenium - Premium Messaging</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -93,7 +93,7 @@ def home():
                 width: 100px;
                 height: 100px;
                 margin: 0 auto 20px;
-                background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zoneium%20logo%20png.png') center/contain no-repeat;
+                background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zonenium%20logo%20png.png') center/contain no-repeat;
                 border-radius: 25px;
                 box-shadow: 0 10px 25px rgba(255, 140, 0, 0.3);
             }
@@ -157,7 +157,7 @@ def home():
     <body>
         <div class="container">
             <div class="logo"></div>
-            <h1>Zonetium</h1>
+            <h1>Zonenium</h1>
             <p class="subtitle">Reliable • Private • Beautiful</p>
 
             <a href="/app" class="btn btn-primary">🚀 Launch Messaging App</a>
@@ -183,7 +183,7 @@ def register_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Register - Zonetium</title>
+        <title>Register - Zonenium</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -209,7 +209,7 @@ def register_page():
                 width: 80px;
                 height: 80px;
                 margin: 0 auto 20px;
-                background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zoneium%20logo%20png.png') center/contain no-repeat;
+                background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zonenium%20logo%20png.png') center/contain no-repeat;
                 border-radius: 20px;
             }
             h1 { text-align: center; font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 30px; }
@@ -275,7 +275,7 @@ def register_page():
     <body>
         <div class="container">
             <div class="logo"></div>
-            <h1>Join Zonetium</h1>
+            <h1>Join Zonenium</h1>
             
             <div id="alert" class="alert"></div>
             
@@ -321,7 +321,7 @@ def register_page():
                     if (response.ok) {
                         const data = await response.json();
                         alertDiv.className = 'alert alert-success';
-                        alertDiv.textContent = 'Account created successfully! Welcome to Zonetium!';
+                        alertDiv.textContent = 'Account created successfully! Welcome to Zonenium!';
                         alertDiv.style.display = 'block';
                         
                         // Clear form
@@ -347,12 +347,12 @@ def register_page():
 def messenger_app():
     return HTMLResponse(content="""
     <!DOCTYPE html>
-    <html><head><title>Zonetium Messenger</title>
+    <html><head><title>Zonenium Messenger</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: Arial; text-align: center; padding: 50px; background: #1F2937; color: white; }
         .container { max-width: 600px; margin: 0 auto; }
-        .logo { width: 100px; height: 100px; margin: 0 auto 20px; background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zoneium%20logo%20png.png') center/contain no-repeat; border-radius: 25px; }
+        .logo { width: 100px; height: 100px; margin: 0 auto 20px; background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zonenium%20logo%20png.png') center/contain no-repeat; border-radius: 25px; }
         .feature-list { background: #374151; padding: 30px; border-radius: 12px; margin: 30px 0; text-align: left; }
         .feature-item { margin: 15px 0; font-size: 18px; }
         .back-link { color: #FF8C00; font-weight: bold; font-size: 18px; text-decoration: none; }
@@ -362,12 +362,12 @@ def messenger_app():
     <body>
         <div class="container">
             <div class="logo"></div>
-            <h1>Welcome to Zonetium Production!</h1>
+            <h1>Welcome to Zonenium Production!</h1>
             <p>Your messaging app is now live with your beautiful branding!</p>
             
             <div class="feature-list">
                 <h3>🎉 Production Features Active:</h3>
-                <div class="feature-item">✅ Your beautiful Zonetium logo integrated</div>
+                <div class="feature-item">✅ Your beautiful Zonenium logo integrated</div>
                 <div class="feature-item">✅ Real user registration working</div>
                 <div class="feature-item">✅ Secure password hashing (bcrypt)</div>
                 <div class="feature-item">✅ JWT authentication system</div>
@@ -444,12 +444,12 @@ async def login(user_credentials: UserLogin):
 def get_status():
     return {
         "status": "production",
-        "app": "Zonetium Messenger",
+        "app": "Zonenium Messenger",
         "version": "3.0.0",
         "message": "Production version with your beautiful logo!",
         "users_registered": len(users_db),
         "features": [
-            "✅ Your Zonetium logo integrated",
+            "✅ Your Zonenium logo integrated",
             "✅ Real user registration",
             "✅ Secure authentication",
             "✅ Mobile responsive",
