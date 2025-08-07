@@ -1,34 +1,30 @@
-from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
-import socketio
 import os
-import sys
-import base64
-from datetime import datetime, timedelta
-from typing import Optional, List
-from jose import JWTError, jwt
-from passlib.context import CryptContext
 
-# Add backend directory to path to import modules
-sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
+# Simple configuration without complex dependencies
+PORT = int(os.environ.get("PORT", 8000))
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
 
-try:
-    # Import models and database from backend
-    from models import (
-        StatusCheck, User, UserCreate, UserLogin, Token, TokenData, UserResponse,
-        Message, MessageCreate, Chat, ChatListResponse, MessageListResponse,
-        GroupCreateRequest, GroupUpdateRequest, GroupMemberAction, GroupInfo
-    )
-    from database import db
-    from socket_manager import socket_manager
-    BACKEND_AVAILABLE = True
-except ImportError as e:
-    print(f"Backend modules not available: {e}")
-    BACKEND_AVAILABLE = False
+# No complex backend for now - just the working interface
+BACKEND_AVAILABLE = False
+
+app = FastAPI(
+    title="Zonenium - Free WhatsApp Alternative", 
+    description="Modern WhatsApp-like messaging application",
+    version="1.0.0"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+🎉 Result After This Fix:
 
 # Railway/Production configuration
 PORT = int(os.environ.get("PORT", 8001))  # Default to 8001 for production
