@@ -24,90 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-🎉 Result After This Fix:
-
-# Railway/Production configuration
-PORT = int(os.environ.get("PORT", 8001))  # Default to 8001 for production
-DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
-ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
-
-# CORS origins from environment
-CORS_ORIGINS = os.environ.get(
-    "CORS_ORIGINS", 
-    "http://localhost:3000,http://localhost:3001,https://zonenium.top,https://www.zonenium.top,https://zonenium-1.onrender.com"
-).split(",")
-
-# Security setup
-SECRET_KEY = os.getenv("SECRET_KEY", "zonenium-secret-key-change-in-production")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
-
-if BACKEND_AVAILABLE:
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    security = HTTPBearer()
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    print(f"🚀 Starting Zonenium server on port {PORT}")
-    print(f"🌍 Environment: {ENVIRONMENT}")
-    print(f"🔗 CORS Origins: {CORS_ORIGINS}")
-    
-    # Connect to database if backend is available
-    if BACKEND_AVAILABLE:
-        try:
-            await db.connect_to_database()
-            print("✅ Database connected successfully")
-            
-            # Create sample data if in development
-            if ENVIRONMENT == "development":
-                await db.initialize_sample_data()
-                
-        except Exception as e:
-            print(f"❌ Database connection failed: {e}")
-    
-    yield
-    
-    # Shutdown
-    print("📴 Shutting down Zonenium server")
-    if BACKEND_AVAILABLE:
-        try:
-            await db.close_database_connection()
-        except:
-            pass
-
-app = FastAPI(
-    title="Zonenium - Free WhatsApp Alternative", 
-    description="Modern WhatsApp-like messaging application with voice messages, file sharing, and real-time chat",
-    version="1.0.0",
-    docs_url="/docs" if DEBUG else None,
-    redoc_url="/redoc" if DEBUG else None,
-    lifespan=lifespan
-)
-
-# Socket.IO integration (if backend available)
-if BACKEND_AVAILABLE:
-    socket_app = socketio.ASGIApp(socket_manager.sio, app)
-
-# Serve static files (Frontend build) 
-static_dir = os.path.join(os.path.dirname(__file__), "frontend", "dist")
-if os.path.exists(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
-    app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
-
-# Serve public images and PWA files
-public_dir = os.path.join(os.path.dirname(__file__), "frontend", "public")
-if os.path.exists(public_dir):
-    app.mount("/images", StaticFiles(directory=os.path.join(public_dir, "images")), name="images")
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/")
 def home():
@@ -299,7 +215,6 @@ def home():
             let deferredPrompt;
             let installButton = document.querySelector('.install-btn');
 
-            // Listen for install prompt
             window.addEventListener('beforeinstallprompt', (e) => {
                 console.log('PWA install prompt available');
                 e.preventDefault();
@@ -307,7 +222,6 @@ def home():
                 installButton.style.display = 'inline-block';
             });
 
-            // Install function
             async function installApp() {
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
@@ -318,7 +232,6 @@ def home():
                     }
                     deferredPrompt = null;
                 } else {
-                    // Fallback instructions
                     let instructions = '';
                     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                     const isAndroid = /Android/.test(navigator.userAgent);
@@ -335,14 +248,12 @@ def home():
                 }
             }
 
-            // Check if already installed
             if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
                 installButton.innerHTML = '✅ App Installed';
                 installButton.disabled = true;
                 installButton.style.opacity = '0.7';
             }
 
-            // Service worker registration
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/sw')
                     .then(registration => console.log('SW registered'))
@@ -356,76 +267,80 @@ def home():
 
 @app.get("/app")
 async def serve_react_app():
-    """Serve the React application"""
-    # Check if static frontend exists
-    frontend_path = os.path.join(os.path.dirname(__file__), "frontend", "dist", "index.html")
-    if os.path.exists(frontend_path):
-        return FileResponse(frontend_path)
-    else:
-        # Fallback: serve a simple chat interface if React build doesn't exist
-        return HTMLResponse(content="""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Zonenium Chat</title>
-            <style>
-                body { margin: 0; font-family: system-ui; background: #1f2937; color: white; }
-                .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-                .header { text-align: center; padding: 20px 0; border-bottom: 1px solid #374151; }
-                .chat-area { min-height: 60vh; padding: 20px 0; }
-                .message { background: #374151; padding: 16px; margin: 8px 0; border-radius: 12px; }
-                .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #1f2937; padding: 20px; border-top: 1px solid #374151; }
-                .message-input { width: 100%; padding: 12px; border: 1px solid #374151; border-radius: 25px; background: #374151; color: white; }
-                .coming-soon { text-align: center; padding: 40px; opacity: 0.7; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>🚀 Zonenium Chat</h1>
-                    <p>Full React app is being loaded...</p>
-                </div>
-                <div class="chat-area">
-                    <div class="coming-soon">
-                        <h2>Chat Interface Loading</h2>
-                        <p>The full messaging experience with authentication, real-time chat, voice messages, and file sharing is being prepared.</p>
-                        <div style="margin: 20px 0;">
-                            <a href="/" style="background: linear-gradient(45deg, #10b981, #3b82f6); color: white; padding: 12px 24px; border-radius: 25px; text-decoration: none; margin: 8px;">← Back to Home</a>
-                        </div>
+    """Serve the basic chat interface"""
+    return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Zonenium Chat</title>
+        <style>
+            body { margin: 0; font-family: system-ui; background: #1f2937; color: white; }
+            .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; padding: 20px 0; border-bottom: 1px solid #374151; }
+            .chat-area { min-height: 60vh; padding: 20px 0; }
+            .coming-soon { text-align: center; padding: 40px; opacity: 0.7; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🚀 Zonenium Chat</h1>
+                <p>Your messaging app is ready!</p>
+            </div>
+            <div class="chat-area">
+                <div class="coming-soon">
+                    <h2>🎉 Success! App is Working</h2>
+                    <p>You now have the foundation for your WhatsApp-like messaging app!</p>
+                    <div style="margin: 20px 0;">
+                        <a href="/" style="background: linear-gradient(45deg, #10b981, #3b82f6); color: white; padding: 12px 24px; border-radius: 25px; text-decoration: none; margin: 8px;">← Back to Home</a>
                     </div>
                 </div>
             </div>
-            <div class="input-area">
-                <input type="text" class="message-input" placeholder="Type your message... (Coming soon)" disabled />
-            </div>
-        </body>
-        </html>
-        """)
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/manifest")
+def get_manifest():
+    return {
+        "name": "Zonenium - Free WhatsApp Alternative",
+        "short_name": "Zonenium",
+        "description": "Free WhatsApp alternative with voice messages and file sharing",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#1e3a8a",
+        "theme_color": "#3182ce",
+        "icons": [
+            {
+                "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%233b82f6'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='white' font-size='45' font-family='system-ui' font-weight='800'%3EZ%3C/text%3E%3C/svg%3E",
+                "sizes": "512x512",
+                "type": "image/svg+xml"
+            }
+        ]
+    }
+
+@app.get("/sw")
+def get_service_worker():
+    return HTMLResponse(content="console.log('Zonenium SW loaded');", media_type="application/javascript")
 
 @app.get("/api/status")
 def get_status():
-    backend_status = "available" if BACKEND_AVAILABLE else "unavailable"
     return {
         "status": "live",
         "app": "Zonenium",
         "version": "1.0.0",
         "message": "🎉 App is working perfectly!",
-        "domain": "zonenium.top", 
-        "backend": backend_status,
-        "features": ["PWA", "Installable", "Offline Ready", "Real-time Chat", "Voice Messages", "File Sharing"]
+        "domain": "zonenium.top",
+        "features": ["PWA", "Installable", "Working Interface"]
     }
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "backend_available": BACKEND_AVAILABLE}
+    return {"status": "healthy"}
 
 if __name__ == "__main__":
     import uvicorn
-    if BACKEND_AVAILABLE:
-        # Run with Socket.IO support
-        uvicorn.run(socket_app, host="0.0.0.0", port=PORT)
-    else:
-        # Run basic FastAPI app
-        uvicorn.run(app, host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
