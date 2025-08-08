@@ -1,470 +1,399 @@
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+# Zoneium - Professional Messaging Platform - Render Deployment Ready
 import os
-import jwt
-import bcrypt
-import uuid
+from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import socketio
 from datetime import datetime, timedelta
+import uvicorn
+from pathlib import Path
+import json
+import uuid
+import motor.motor_asyncio
+from passlib.context import CryptContext
+import jwt
 from typing import Optional
-from pydantic import BaseModel
 
-# Environment Configuration
-PORT = int(os.environ.get("PORT", 8000))
-SECRET_KEY = "zonenium-production-key-2024"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
-# Simple in-memory storage for now (will add DB later)
-users_db = {}
-messages_db = []
-
+# Security setup
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
-# Pydantic Models
-class UserCreate(BaseModel):
-    username: str
-    email: str
-    full_name: str
-    password: str
-    phone: Optional[str] = ""
+# JWT Configuration
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
-class UserLogin(BaseModel):
-    username: str
-    password: str
+# Initialize FastAPI
+app = FastAPI(
+    title="Zoneium Messaging Platform",
+    description="Professional messaging app with real-time features for zozenium.top",
+    version="3.0.0"
+)
 
-# FastAPI app
-app = FastAPI(title="Zonenium Messenger - Production", version="3.0.0")
+# CORS configuration for zozenium.top
+CORS_ORIGINS = os.environ.get(
+    "CORS_ORIGINS", 
+    "https://zozenium.top,https://www.zozenium.top,http://localhost:3000"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
+# Database setup
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+DATABASE_NAME = "zoneium_production"
+
+class Database:
+    client: Optional[motor.motor_asyncio.AsyncIOMotorClient] = None
+    database = None
+
+db = Database()
+
+# Socket.IO setup
+sio = socketio.AsyncServer(
+    async_mode="asgi",
+    cors_allowed_origins=CORS_ORIGINS,
+    logger=True
+)
+
+# Create Socket.IO ASGI app
+socket_app = socketio.ASGIApp(sio, app)
+
+# Utility functions
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
 def create_access_token(data: dict):
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-
-# Routes
-@app.get("/")
-def home():
-    return HTMLResponse(content="""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Zonenium - Premium Messaging</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-                font-family: 'Inter', sans-serif;
-                background: linear-gradient(135deg, #FF8C00 0%, #FF7F50 100%);
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #1F2937;
-            }
-            .container {
-                background: rgba(255, 255, 255, 0.95);
-                border-radius: 24px;
-                padding: 50px 40px;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                backdrop-filter: blur(20px);
-                width: 90%;
-                max-width: 450px;
-                text-align: center;
-            }
-            .logo {
-                width: 100px;
-                height: 100px;
-                margin: 0 auto 20px;
-                background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zonenium%20logo%20png.png') center/contain no-repeat;
-                border-radius: 25px;
-                box-shadow: 0 10px 25px rgba(255, 140, 0, 0.3);
-            }
-            h1 {
-                font-size: 32px;
-                font-weight: 800;
-                color: #1F2937;
-                margin-bottom: 8px;
-            }
-            .subtitle {
-                color: #6B7280;
-                font-size: 18px;
-                margin-bottom: 40px;
-            }
-            .btn {
-                width: 100%;
-                padding: 18px 24px;
-                margin: 12px 0;
-                border: none;
-                border-radius: 16px;
-                font-size: 18px;
-                font-weight: 700;
-                cursor: pointer;
-                text-decoration: none;
-                display: inline-block;
-                text-align: center;
-                transition: all 0.3s ease;
-                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            }
-            .btn-primary {
-                background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-                color: white;
-            }
-            .btn-primary:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 12px 24px rgba(16, 185, 129, 0.4);
-            }
-            .btn-secondary {
-                background: linear-gradient(135deg, #FF8C00 0%, #FF7F50 100%);
-                color: white;
-            }
-            .btn-secondary:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 12px 24px rgba(255, 140, 0, 0.4);
-            }
-            .success-msg {
-                background: #D1FAE5;
-                color: #047857;
-                padding: 20px;
-                border-radius: 12px;
-                margin-top: 30px;
-                font-weight: 600;
-            }
-            @media (max-width: 480px) {
-                .container { width: 95%; padding: 40px 24px; }
-                .logo { width: 80px; height: 80px; }
-                h1 { font-size: 28px; }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="logo"></div>
-            <h1>Zonenium</h1>
-            <p class="subtitle">Reliable • Private • Beautiful</p>
-
-            <a href="/app" class="btn btn-primary">🚀 Launch Messaging App</a>
-            <a href="/register" class="btn btn-secondary">Create Account</a>
-
-            <div class="success-msg">
-                ✅ Production Version Live!<br>
-                • Your beautiful logo integrated<br>
-                • Real user registration working<br>
-                • Database ready for connection<br>
-                • Mobile optimized design
-            </div>
-        </div>
-    </body>
-    </html>
-    """)
-
-@app.get("/register")
-def register_page():
-    return HTMLResponse(content="""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Register - Zonenium</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-                font-family: 'Inter', sans-serif;
-                background: linear-gradient(135deg, #FF8C00 0%, #FF7F50 100%);
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
-            .container {
-                background: rgba(255, 255, 255, 0.95);
-                border-radius: 24px;
-                padding: 40px;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                width: 100%;
-                max-width: 450px;
-                backdrop-filter: blur(20px);
-            }
-            .logo {
-                width: 80px;
-                height: 80px;
-                margin: 0 auto 20px;
-                background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zonenium%20logo%20png.png') center/contain no-repeat;
-                border-radius: 20px;
-            }
-            h1 { text-align: center; font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 30px; }
-            .form-group { margin-bottom: 20px; }
-            label { display: block; font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px; }
-            input {
-                width: 100%;
-                padding: 16px 18px;
-                border: 2px solid #E5E7EB;
-                border-radius: 12px;
-                font-size: 16px;
-                transition: all 0.3s ease;
-                background: white;
-            }
-            input:focus {
-                outline: none;
-                border-color: #FF8C00;
-                box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.1);
-            }
-            .btn {
-                width: 100%;
-                padding: 18px;
-                background: linear-gradient(135deg, #FF8C00, #FF7F50);
-                color: white;
-                border: none;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: 700;
-                cursor: pointer;
-                margin: 20px 0;
-                transition: all 0.3s ease;
-            }
-            .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(255, 140, 0, 0.4); }
-            .back-link {
-                display: block;
-                text-align: center;
-                color: #6B7280;
-                text-decoration: none;
-                font-weight: 500;
-                margin-top: 20px;
-            }
-            .back-link:hover { color: #FF8C00; }
-            .alert {
-                padding: 12px 16px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-                font-size: 14px;
-                font-weight: 500;
-                display: none;
-            }
-            .alert-success {
-                background: #D1FAE5;
-                color: #047857;
-                border: 1px solid #A7F3D0;
-            }
-            .alert-error {
-                background: #FEE2E2;
-                color: #DC2626;
-                border: 1px solid #FECACA;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="logo"></div>
-            <h1>Join Zonenium</h1>
-            
-            <div id="alert" class="alert"></div>
-            
-            <form id="registerForm">
-                <div class="form-group">
-                    <label for="full_name">Full Name</label>
-                    <input type="text" id="full_name" name="full_name" required>
-                </div>
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                
-                <button type="submit" class="btn">Create Account</button>
-            </form>
-            
-            <a href="/" class="back-link">← Back to Home</a>
-        </div>
-
-        <script>
-            document.getElementById('registerForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                const userData = Object.fromEntries(formData);
-                const alertDiv = document.getElementById('alert');
-                
-                try {
-                    const response = await fetch('/api/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(userData)
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        alertDiv.className = 'alert alert-success';
-                        alertDiv.textContent = 'Account created successfully! Welcome to Zonenium!';
-                        alertDiv.style.display = 'block';
-                        
-                        // Clear form
-                        this.reset();
-                    } else {
-                        const error = await response.json();
-                        alertDiv.className = 'alert alert-error';
-                        alertDiv.textContent = error.detail || 'Registration failed';
-                        alertDiv.style.display = 'block';
-                    }
-                } catch (error) {
-                    alertDiv.className = 'alert alert-error';
-                    alertDiv.textContent = 'Network error. Please try again.';
-                    alertDiv.style.display = 'block';
-                }
-            });
-        </script>
-    </body>
-    </html>
-    """)
-
-@app.get("/app")
-def messenger_app():
-    return HTMLResponse(content="""
-    <!DOCTYPE html>
-    <html><head><title>Zonenium Messenger</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { font-family: Arial; text-align: center; padding: 50px; background: #1F2937; color: white; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .logo { width: 100px; height: 100px; margin: 0 auto 20px; background: url('https://customer-assets.emergentagent.com/job_zonie-talk/artifacts/jdvwnrja_zonenium%20logo%20png.png') center/contain no-repeat; border-radius: 25px; }
-        .feature-list { background: #374151; padding: 30px; border-radius: 12px; margin: 30px 0; text-align: left; }
-        .feature-item { margin: 15px 0; font-size: 18px; }
-        .back-link { color: #FF8C00; font-weight: bold; font-size: 18px; text-decoration: none; }
-        .back-link:hover { color: #FF7F50; }
-    </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="logo"></div>
-            <h1>Welcome to Zonenium Production!</h1>
-            <p>Your messaging app is now live with your beautiful branding!</p>
-            
-            <div class="feature-list">
-                <h3>🎉 Production Features Active:</h3>
-                <div class="feature-item">✅ Your beautiful Zonenium logo integrated</div>
-                <div class="feature-item">✅ Real user registration working</div>
-                <div class="feature-item">✅ Secure password hashing (bcrypt)</div>
-                <div class="feature-item">✅ JWT authentication system</div>
-                <div class="feature-item">✅ Mobile responsive design</div>
-                <div class="feature-item">✅ Production-ready infrastructure</div>
-                <div class="feature-item">🔄 Full messaging features coming next</div>
-            </div>
-            
-            <p><a href="/" class="back-link">← Back to Home</a></p>
-            <p style="margin-top: 30px; font-size: 14px; color: #94A3B8;">
-                Version 3.0.0 - Production Ready | Database: Connected
-            </p>
-        </div>
-    </body></html>
-    """)
-
-@app.post("/api/register")
-async def register(user_data: UserCreate):
-    # Check if user exists
-    if user_data.username in users_db:
-        raise HTTPException(status_code=400, detail="Username already taken")
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
     
-    # Create user
-    hashed_password = hash_password(user_data.password)
-    user_id = str(uuid.uuid4())
-    
-    users_db[user_data.username] = {
-        "id": user_id,
-        "username": user_data.username,
-        "email": user_data.email,
-        "full_name": user_data.full_name,
-        "phone": user_data.phone,
-        "password": hashed_password,
-        "created_at": datetime.utcnow().isoformat()
-    }
-    
-    # Create token
-    access_token = create_access_token(data={"sub": user_data.username})
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": user_id,
-            "username": user_data.username,
-            "email": user_data.email,
-            "full_name": user_data.full_name
+    user = await db.database.users.find_one({"username": username})
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+# Database operations
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection"""
+    try:
+        db.client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
+        db.database = db.client[DATABASE_NAME]
+        
+        # Test connection
+        await db.client.admin.command('ping')
+        print("✅ Database connected successfully")
+        
+        # Create indexes
+        await db.database.users.create_index("username", unique=True)
+        await db.database.users.create_index("email", unique=True)
+        await db.database.messages.create_index([("chat_id", 1), ("timestamp", -1)])
+        
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup database connection"""
+    if db.client:
+        db.client.close()
+
+# Health check endpoint
+@app.get("/api/health")
+async def health_check():
+    """Health check for Render monitoring"""
+    try:
+        # Test database connection
+        db_status = "ok"
+        if db.database:
+            try:
+                await db.client.admin.command('ping')
+            except:
+                db_status = "error"
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "version": "3.0.0",
+            "environment": os.environ.get("ENVIRONMENT", "development"),
+            "database": db_status,
+            "domain": "zozenium.top"
         }
-    }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+# Authentication endpoints
+@app.post("/api/register")
+async def register(request: Request):
+    """User registration"""
+    try:
+        data = await request.json()
+        username = data.get("username")
+        email = data.get("email") 
+        password = data.get("password")
+        full_name = data.get("full_name", "")
+        
+        if not username or not email or not password:
+            raise HTTPException(status_code=400, detail="Missing required fields")
+        
+        # Check if user exists
+        existing_user = await db.database.users.find_one({
+            "$or": [{"username": username}, {"email": email}]
+        })
+        
+        if existing_user:
+            raise HTTPException(status_code=400, detail="User already exists")
+        
+        # Create new user
+        user_id = str(uuid.uuid4())
+        hashed_password = hash_password(password)
+        
+        user_doc = {
+            "user_id": user_id,
+            "username": username,
+            "email": email,
+            "full_name": full_name,
+            "password_hash": hashed_password,
+            "created_at": datetime.utcnow(),
+            "is_online": False,
+            "status": "Hey there! I am using Zoneium.",
+            "avatar_url": ""
+        }
+        
+        await db.database.users.insert_one(user_doc)
+        
+        # Create access token
+        token = create_access_token(data={"sub": username})
+        
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {
+                "user_id": user_id,
+                "username": username,
+                "full_name": full_name,
+                "email": email,
+                "avatar_url": "",
+                "status": user_doc["status"]
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/login")
-async def login(user_credentials: UserLogin):
-    user = users_db.get(user_credentials.username)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    if not verify_password(user_credentials.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    access_token = create_access_token(data={"sub": user["username"]})
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": user["id"],
-            "username": user["username"],
-            "email": user["email"],
-            "full_name": user["full_name"]
+async def login(request: Request):
+    """User login"""
+    try:
+        data = await request.json()
+        username = data.get("username")
+        password = data.get("password")
+        
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Username and password required")
+        
+        # Find user
+        user = await db.database.users.find_one({"username": username})
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Verify password
+        if not verify_password(password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Update online status
+        await db.database.users.update_one(
+            {"user_id": user["user_id"]},
+            {"$set": {"is_online": True, "last_seen": datetime.utcnow()}}
+        )
+        
+        # Create access token
+        token = create_access_token(data={"sub": username})
+        
+        return {
+            "access_token": token,
+            "token_type": "bearer", 
+            "user": {
+                "user_id": user["user_id"],
+                "username": user["username"],
+                "full_name": user.get("full_name", ""),
+                "email": user["email"],
+                "avatar_url": user.get("avatar_url", ""),
+                "status": user.get("status", "")
+            }
         }
-    }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/status")
-def get_status():
-    return {
-        "status": "production",
-        "app": "Zonenium Messenger",
-        "version": "3.0.0",
-        "message": "Production version with your beautiful logo!",
-        "users_registered": len(users_db),
-        "features": [
-            "✅ Your Zonenium logo integrated",
-            "✅ Real user registration",
-            "✅ Secure authentication",
-            "✅ Mobile responsive",
-            "✅ Production infrastructure"
-        ]
-    }
+# Basic messaging endpoints
+@app.get("/api/chats")
+async def get_user_chats(current_user: dict = Depends(get_current_user)):
+    """Get user's chats"""
+    try:
+        chats_cursor = db.database.chats.find({
+            "participants": {"$in": [current_user["user_id"]]}
+        }).sort("last_message_time", -1).limit(50)
+        
+        chats = []
+        async for chat in chats_cursor:
+            chat["_id"] = str(chat["_id"])
+            chats.append(chat)
+        
+        return {"chats": chats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/users")
-def get_users():
-    """Get registered users (for testing)"""
-    return {
-        "total_users": len(users_db),
-        "usernames": list(users_db.keys())
-    }
+@app.get("/api/messages/{chat_id}")
+async def get_messages(chat_id: str, current_user: dict = Depends(get_current_user)):
+    """Get messages for a chat"""
+    try:
+        messages_cursor = db.database.messages.find({
+            "chat_id": chat_id
+        }).sort("timestamp", -1).limit(50)
+        
+        messages = []
+        async for message in messages_cursor:
+            message["_id"] = str(message["_id"])
+            messages.append(message)
+        
+        messages.reverse()  # Reverse to get chronological order
+        return {"messages": messages}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/users/search")
+async def search_users(query: str, current_user: dict = Depends(get_current_user)):
+    """Search for users"""
+    try:
+        if len(query) < 2:
+            return {"users": []}
+        
+        users_cursor = db.database.users.find({
+            "$or": [
+                {"username": {"$regex": query, "$options": "i"}},
+                {"full_name": {"$regex": query, "$options": "i"}}
+            ],
+            "user_id": {"$ne": current_user["user_id"]}
+        }).limit(10)
+        
+        users = []
+        async for user in users_cursor:
+            users.append({
+                "user_id": user["user_id"],
+                "username": user["username"],
+                "full_name": user.get("full_name", ""),
+                "avatar_url": user.get("avatar_url", ""),
+                "is_online": user.get("is_online", False)
+            })
+        
+        return {"users": users}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Frontend serving
+@app.get("/")
+async def serve_frontend():
+    """Serve React frontend"""
+    frontend_path = Path("frontend/dist/index.html")
+    if frontend_path.exists():
+        return FileResponse(frontend_path)
+    else:
+        return {
+            "message": "🚀 Zoneium API is running!", 
+            "version": "3.0.0",
+            "domain": "zozenium.top",
+            "status": "healthy"
+        }
+
+# Socket.IO events
+@sio.event
+async def connect(sid, environ):
+    """Handle client connection"""
+    print(f"Client {sid} connected")
+
+@sio.event
+async def disconnect(sid):
+    """Handle client disconnection""" 
+    print(f"Client {sid} disconnected")
+
+@sio.event
+async def join_chat(sid, data):
+    """Join a chat room"""
+    try:
+        chat_id = data.get("chat_id")
+        if chat_id:
+            await sio.enter_room(sid, chat_id)
+            print(f"Client {sid} joined chat {chat_id}")
+    except Exception as e:
+        print(f"Error joining chat: {e}")
+
+@sio.event
+async def send_message(sid, data):
+    """Handle message sending"""
+    try:
+        message_id = str(uuid.uuid4())
+        chat_id = data.get("chat_id")
+        sender_id = data.get("sender_id") 
+        content = data.get("content")
+        
+        if not all([chat_id, sender_id, content]):
+            await sio.emit("error", {"message": "Missing required fields"}, room=sid)
+            return
+        
+        message = {
+            "message_id": message_id,
+            "chat_id": chat_id,
+            "sender_id": sender_id,
+            "content": content,
+            "timestamp": datetime.utcnow(),
+            "message_type": "text"
+        }
+        
+        # Save to database
+        await db.database.messages.insert_one(message)
+        
+        # Update chat's last message time
+        await db.database.chats.update_one(
+            {"chat_id": chat_id},
+            {"$set": {"last_message_time": datetime.utcnow()}}
+        )
+        
+        # Convert datetime for JSON serialization
+        message["timestamp"] = message["timestamp"].isoformat()
+        
+        # Emit to chat room
+        await sio.emit("new_message", message, room=chat_id)
+        
+    except Exception as e:
+        await sio.emit("error", {"message": str(e)}, room=sid)
+
+# Run the application
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(socket_app, host="0.0.0.0", port=port)
